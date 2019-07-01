@@ -21,7 +21,7 @@ local passwords = load_passwords()
 local function has_weak_password(name)
     local auth = auth_handler.get_auth(name)
     if not auth then
-        log('error', 'Auth for %s is not initialized', name)
+        log('warning', 'Auth for %s is not initialized', name)
         return false
     end
 
@@ -41,17 +41,21 @@ end
 local function kick(player)
     local player_name = player:get_player_name()
     local reason = 'Your account has been reset due to a weak password. Please choose a stronger one.'
+    log('action', 'Kicking %s.', player_name)
     if not minetest.kick_player(player_name, reason) then
+        log('warning', 'Failed to kick player %s; attempting to detach.', player_name)
         player:set_detach()
         if not minetest.kick_player(player_name, reason) then
             log('warning', 'Failed to kick player %s after detaching!', player_name)
             return false
         end
     end
+    log('action', 'Kicked %s.', player_name)
     return true
 end
 
 local function remove_player(name)
+    log('action', 'attempting to remove %s.', name)
     local rc = minetest.remove_player(name)
 
     if rc == 0 then
@@ -84,8 +88,13 @@ minetest.register_on_newplayer(function(player)
     local name = player:get_player_name()
 
     if has_weak_password(name) then
-        if kick(player) then
-            minetest.after(1, remove_player, name)
-        end
+        minetest.after(0, function()
+            if not kick(player) then
+                log('warning', 'failed to kick %s', name)
+            end
+            if not remove_player(name) then
+                log('warning', 'failed to remove %s', name)
+            end
+        end)
     end
 end)
