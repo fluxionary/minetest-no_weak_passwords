@@ -80,23 +80,20 @@ minetest.register_on_prejoinplayer(function(name, ipstr)
     if has_weak_password(name) and remove_player(name) then
         r = 'Your account has been reset due to a weak password. Please choose a stronger one.'
     end
-    log('action', 'checks took %s', (minetest.get_us_time() - start)/1000000)
+    log('action', 'checks of %s took %s', name, (minetest.get_us_time() - start)/1000000)
     return r
 end)
+
+local function newplayer_has_weak_password(name)
+    local player = minetest.get_player_by_name(name)
+    if player then kick(player) end
+    minetest.after(2, remove_player, name)
+end
 
 minetest.register_on_newplayer(function(player)
     local name = player:get_player_name()
 
     if has_weak_password(name) then
-        minetest.after(0, function()
-            if not kick(player) then
-                log('warning', 'failed to kick %s', name)
-            end
-            minetest.after(1, function()
-                if not remove_player(name) then
-                    log('warning', 'failed to remove %s', name)
-                end
-            end)
-        end)
+        minetest.after(0, newplayer_has_weak_password, name)
     end
 end)
